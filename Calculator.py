@@ -2,6 +2,7 @@ import NeuralNet
 import random
 import Utility
 import math
+import chess
 
 class Position:
     def __init__(self, move, children, shared_board):
@@ -82,6 +83,11 @@ class Calculator:
         self.calculated_head = pos
 
     def make_move(self):
+        if self.calculated_head.shared_board.is_fivefold_repetition() or self.calculated_head.shared_board.is_seventyfive_moves():
+            return None
+        if self.game.drawn:
+            return None
+
         best_child = None
         if self.calculated_head == None:
             return None
@@ -96,6 +102,22 @@ class Calculator:
                     best_child = child
         if best_child == None:
             return None
+
+        side = ""
+        if self.calculated_head.shared_board.turn == chess.WHITE:
+            side = "White"
+        else:
+            side = "Black"
+        if (side == "Black" and best_child.true_evaluation > 0) or (side == "White" and best_child.true_evaluation < 0):
+            if self.calculated_head.shared_board.can_claim_fifty_moves():
+                print(side + " claims draw by fifty moves!")
+                self.game.drawn = True
+                return
+            if self.calculated_head.shared_board.can_claim_threefold_repetition():
+                print(side + " claims draw by threefold repetition!")
+                self.game.drawn = True
+                return
+
         self.game.make_move(self.calculated_head.shared_board, best_child.move)
         best_child.shared_board = self.calculated_head.shared_board
         self.calculated_head = best_child
@@ -204,6 +226,11 @@ class Calculator:
         return true_eval
 
     def calculate_MCTS(self):
+        if self.calculated_head.shared_board.is_fivefold_repetition() or self.calculated_head.shared_board.is_seventyfive_moves():
+            return None
+        if self.game.drawn:
+            return None
+            
         self.MCTS(self.calculated_head, 300)
         self.calculated_head.true_evaluation = self.calculated_head.tot_evaluation / self.calculated_head.visit_count
         self.calculated_head.true_priors = []
@@ -235,6 +262,22 @@ class Calculator:
         self.NeuralNet.learn_evaluation(self.calculated_head.shared_board, self.calculated_head.evaluation, self.calculated_head.true_evaluation)
         self.NeuralNet.learn_policies(self.calculated_head.shared_board, self.calculated_head.priors, self.calculated_head.true_priors)
         response = self.calculated_head.true_priors[best_index][1]
+
+        side = ""
+        if self.calculated_head.shared_board.turn == chess.WHITE:
+            side = "White"
+        else:
+            side = "Black"
+        if (side == "Black" and self.calculated_head.children[best_index].true_evaluation > 0) or (side == "White" and self.calculated_head.children[best_index].true_evaluation < 0):
+            if self.calculated_head.shared_board.can_claim_fifty_moves():
+                print(side + " claims draw by fifty moves!")
+                self.game.drawn = True
+                return
+            if self.calculated_head.shared_board.can_claim_threefold_repetition():
+                print(side + " claims draw by threefold repetition!")
+                self.game.drawn = True
+                return
+
         self.game.make_move(self.calculated_head.shared_board, self.calculated_head.true_priors[best_index][1])
         self.calculated_head = Position(None, None, self.calculated_head.shared_board)
         return response

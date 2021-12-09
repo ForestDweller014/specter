@@ -2,6 +2,7 @@ import random
 import math
 import chess
 import chess.engine
+from chess.engine import Cp, Mate, MateGiven
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -47,7 +48,11 @@ class NeuralNet(nn.Module):
         white_evaluation = info["score"].white()#random.random() * 20 - 10
         evaluation = 0
         if white_evaluation.is_mate():
-            if white_evaluation.mate() > 0:
+            if white_evaluation == MateGiven:
+                evaluation = 99999999
+            elif white_evaluation == Mate(0):
+                evaluation = -99999999
+            elif white_evaluation.mate() > 0:
                 evaluation = 99999999
             else:
                 evaluation = -99999999
@@ -66,7 +71,11 @@ class NeuralNet(nn.Module):
             white_evaluation = info["score"].white()
             probability = 0
             if white_evaluation.is_mate():
-                if white_evaluation.mate() > 0:
+                if white_evaluation == MateGiven:
+                    probability = 1.0
+                elif white_evaluation == Mate(0):
+                    probability = -1.0
+                elif white_evaluation.mate() > 0:
                     probability = 1.0
                 else:
                     probability = -1.0
