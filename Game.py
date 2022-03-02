@@ -32,12 +32,12 @@ class Game:
         elif self.game_board.is_fivefold_repetition() or self.game_board.is_seventyfive_moves() or self.drawn:
             print("Drawed!")
         else:
-            self.send_move(None)
-            #return
+            #self.send_move(None)
+            return
 
     def __init__(self):
         self.game_board = chess.Board()
         self.drawn = False
-        self.calculator = Calculator.Calculator(self, chess.Board(self.game_board.fen()), True, 5)
+        self.calculator = Calculator.Calculator(self, chess.Board(self.game_board.fen()), True, 1)
         self.gui = GUI.GUI(self)
         self.gui.initiate()

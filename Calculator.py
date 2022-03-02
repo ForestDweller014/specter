@@ -25,6 +25,7 @@ class Calculator:
         self.game = game
         self.exploration_factor = 2
         self.NeuralNet = NeuralNet.NeuralNet()
+        self.node_count = 1
             
     def is_confident(val, interval):
         val = Utility.sigmoid(val)
@@ -37,6 +38,7 @@ class Calculator:
             pos.children = []
             for move in moves:
                 pos.children.append(Position(move[1], None, pos.shared_board))
+                self.node_count += 1
         if is_maximizer:
             curr_max = -99999999
             for child in pos.children:
@@ -83,6 +85,8 @@ class Calculator:
         self.calculated_head = pos
 
     def make_move(self):
+        self.node_count = 1
+
         if self.calculated_head.shared_board.is_fivefold_repetition() or self.calculated_head.shared_board.is_seventyfive_moves():
             return None
         if self.game.drawn:
@@ -122,6 +126,8 @@ class Calculator:
         best_child.shared_board = self.calculated_head.shared_board
         self.calculated_head = best_child
         self.calculate_minimax(self.calculated_head)
+
+        print("Nodes evaluated: " + str(self.node_count))
         return best_child.move
 
     def respond(self, opponent_move):
@@ -210,6 +216,7 @@ class Calculator:
                 pos.children = []
                 for move in true_moves:
                     pos.children.append(Position(move[1], None, pos.shared_board))
+                    self.node_count += 1
             pos.tot_evaluation += true_eval
             pos.visit_count += 1
         else:
@@ -226,6 +233,7 @@ class Calculator:
         return true_eval
 
     def calculate_MCTS(self):
+        self.node_count = 1
         if self.calculated_head.shared_board.is_fivefold_repetition() or self.calculated_head.shared_board.is_seventyfive_moves():
             return None
         if self.game.drawn:
@@ -236,28 +244,36 @@ class Calculator:
         self.calculated_head.true_priors = []
         curr_sum = 0
         factor = 1
-        if self.game.turn() == 1:
-            for child in self.calculated_head.children:
-                child.true_evaluation = child.tot_evaluation / child.visit_count
-                curr_sum += math.exp(child.true_evaluation)
-        else:
-            for child in self.calculated_head.children:
-                child.true_evaluation = child.tot_evaluation / child.visit_count
-                curr_sum += math.exp(-1 * child.true_evaluation)
-            factor = -1
+
         best_index = 0
         curr_index = 0
-        best_prob = 0
+        best_eval = 0
+        if self.game.turn() == 1:
+            best_eval = -99999999
+            for child in self.calculated_head.children:
+                child.true_evaluation = child.tot_evaluation / child.visit_count
+                if child.true_evaluation > best_eval:
+                    best_eval = child.true_evaluation
+                    best_index = curr_index
+                curr_index += 1
+                curr_sum += math.exp(child.true_evaluation)
+        else:
+            best_eval = 99999999
+            for child in self.calculated_head.children:
+                child.true_evaluation = child.tot_evaluation / child.visit_count
+                if child.true_evaluation < best_eval:
+                    best_eval = child.true_evaluation
+                    best_index = curr_index
+                curr_index += 1
+                curr_sum += math.exp(-1 * child.true_evaluation)
+            factor = -1
         for child in self.calculated_head.children:
+            curr_prob = 0
             if curr_sum == 0:
                 curr_prob = 0
             else:
                 curr_prob = math.exp(factor * child.true_evaluation) / curr_sum
             self.calculated_head.true_priors.append([curr_prob, child.move])
-            if curr_prob > best_prob:
-                best_prob = curr_prob
-                best_index = curr_index
-            curr_index += 1
 
         self.NeuralNet.learn_evaluation(self.calculated_head.shared_board, self.calculated_head.evaluation, self.calculated_head.true_evaluation)
         self.NeuralNet.learn_policies(self.calculated_head.shared_board, self.calculated_head.priors, self.calculated_head.true_priors)
@@ -280,4 +296,6 @@ class Calculator:
 
         self.game.make_move(self.calculated_head.shared_board, self.calculated_head.true_priors[best_index][1])
         self.calculated_head = Position(None, None, self.calculated_head.shared_board)
+
+        print("Nodes evaluated: " + str(self.node_count))
         return response

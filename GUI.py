@@ -106,11 +106,11 @@ class GUI():
         self.game = game
     
     def initiate(self):
-        th = threading.Thread(target = self.game.send_move, args = (None,))
+        #th = threading.Thread(target = self.game.send_move, args = (None,))
         self.chessGui = QApplication(sys.argv)
         self.window = MainWindow(self.game)
         self.window.show()
-        th.start()
+        #th.start()
         sys.exit(self.chessGui.exec_())
 
     def update_board(self):
